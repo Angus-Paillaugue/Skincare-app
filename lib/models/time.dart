@@ -1,0 +1,4 @@
+enum SkincareTime {
+  morning,
+  night,
+}
