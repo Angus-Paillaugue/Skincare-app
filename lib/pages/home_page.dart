@@ -1,10 +1,11 @@
-import 'dart:developer';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter_layout_grid/flutter_layout_grid.dart';
 import 'package:flutter/material.dart';
 import 'package:skincare/models/time.dart';
 import 'package:skincare/models/routine.dart';
 import 'package:skincare/models/product.dart';
+import 'package:skincare/pages/unused_products.dart';
 import 'package:skincare/services/product_database.dart';
 import 'package:skincare/utils/utils.dart';
 import 'add_product_page.dart';
@@ -52,6 +53,7 @@ class _HomePageState extends State<HomePage> {
     final lastUsed = routine
         .firstWhere((r) => r.product.id == product.id && r.routine == time)
         .lastUsed;
+
     return now.difference(lastUsed).inDays >= product.intervalDays;
   }
 
@@ -84,8 +86,6 @@ class _HomePageState extends State<HomePage> {
       final dueRoutines = activeRoutine
           .where((r) => isDue(r.product, time))
           .toList();
-
-        log(activeRoutine.map((p) => p.product.name).toString());
 
       if (dueRoutines.isNotEmpty && mounted) {
         final res = await Navigator.push(
@@ -131,6 +131,23 @@ class _HomePageState extends State<HomePage> {
         : nightRoutines;
     List<Product> products = routines.map((r) => r.product).toList();
     bool hasDueProducts = products.any((p) => isDue(p, time));
+
+    Widget productGrid = Padding(
+      padding: EdgeInsetsGeometry.all(8.0),
+      child: LayoutGrid(
+        columnSizes: [1.fr, 1.fr],
+        rowSizes: [for (int i = 0; i < math.max((products.length / 2).ceil(), 1); i++) auto],
+        rowGap: 8,
+        columnGap: 8,
+        children: [
+          for (final product in products)
+            GestureDetector(
+              onTap: () => _editProduct(product),
+              child: ProductCard(product: product, time: time),
+            ),
+        ],
+      ),
+    );
     return Column(
       children: [
         ListTile(
@@ -138,10 +155,10 @@ class _HomePageState extends State<HomePage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                hasDueProducts
-                    ? Icons.close_rounded
-                    : Icons.check_rounded,
-                color: hasDueProducts ? Colors.red : Theme.of(context).colorScheme.primary,
+                hasDueProducts ? Icons.close_rounded : Icons.check_rounded,
+                color: hasDueProducts
+                    ? Colors.red
+                    : Theme.of(context).colorScheme.primary,
               ),
               const SizedBox(width: 8),
               Text(
@@ -179,30 +196,33 @@ class _HomePageState extends State<HomePage> {
                 )
               : null,
         ),
-        Padding(
-          padding: EdgeInsetsGeometry.all(8.0),
-          child: LayoutGrid(
-            columnSizes: [1.fr, 1.fr],
-            rowSizes: const [auto, auto],
-            rowGap: 8,
-            columnGap: 8,
-            children: [
-              for (final product in products)
-                GestureDetector(
-                  onTap: () => _editProduct(product),
-                  child: ProductCard(product: product, time: time),
-                ),
-            ],
-          ),
-        ),
+        productGrid,
       ],
     );
+  }
+
+  Future<void> _showUnusedProducts() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => UnusedProductsPage()),
+    );
+    _loadProducts();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Skincare Routine')),
+      appBar: AppBar(
+        title: const Text('Skincare Routine'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.category_rounded),
+            onPressed: _showUnusedProducts,
+            tooltip: 'Unused Products',
+          ),
+        ],
+      ),
+
       body: Column(
         children: [
           Expanded(
@@ -277,8 +297,14 @@ class _HomePageState extends State<HomePage> {
 class ProductCard extends StatelessWidget {
   final Product product;
   final SkincareTime time;
+  final bool editableIcon;
 
-  const ProductCard({super.key, required this.product, required this.time});
+  const ProductCard({
+    super.key,
+    required this.product,
+    required this.time,
+    this.editableIcon = true,
+  });
 
   Widget _buildPill(BuildContext context) {
     return Container(
@@ -301,9 +327,20 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    bool pathExists =
+        product.imagePath != null && File(product.imagePath!).existsSync();
+    Widget image = pathExists
+        ? Image.file(
+            File(product.imagePath!),
+            height: 150,
+            width: double.infinity,
+            fit: BoxFit.cover,
+          )
+        : Center(child: Icon(Icons.image, size: 50));
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             height: 150,
@@ -311,19 +348,13 @@ class ProductCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                product.imagePath != null
-                    ? Image.file(
-                        File(product.imagePath!),
-                        height: 150,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      )
-                    : Center(child: Icon(Icons.image)),
-                Positioned(
-                  bottom: 12,
-                  right: 12,
-                  child: const Icon(Icons.edit_square, color: Colors.white),
-                ),
+                image,
+                if (editableIcon)
+                  Positioned(
+                    bottom: 12,
+                    right: 12,
+                    child: const Icon(Icons.edit_square, color: Colors.white),
+                  ),
               ],
             ),
           ),
@@ -337,6 +368,8 @@ class ProductCard extends StatelessWidget {
                 children: [
                   Text(
                     product.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,

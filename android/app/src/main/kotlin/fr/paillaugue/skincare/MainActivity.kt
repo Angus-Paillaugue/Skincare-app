@@ -1,4 +1,4 @@
-package fr.paillaugue.skincare.skincare
+package fr.paillaugue.skincare
 
 import io.flutter.embedding.android.FlutterActivity
 

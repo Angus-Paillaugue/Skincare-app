@@ -6,6 +6,9 @@ import 'package:path/path.dart' as p;
 
 class Utils {
   static String formatInterval(int days, SkincareTime time) {
+    if (time == SkincareTime.none) {
+      return 'Never used';
+    }
     if (days <= 1) return time == SkincareTime.morning ? 'Daily' : "Every Night";
     if (days == 7) return 'Weekly';
     if (days == 30 || days == 31) return 'Monthly';

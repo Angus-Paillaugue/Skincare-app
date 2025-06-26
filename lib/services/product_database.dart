@@ -231,4 +231,14 @@ class ProductDatabase {
       whereArgs: [product.id],
     );
   }
+
+  Future<List<Product>> getUnusedProducts() async {
+    log("DATABASE ACCESS getUnusedProducts");
+    final db = await instance.database;
+    final result = await db.rawQuery('''
+      SELECT * FROM products
+      WHERE id NOT IN (SELECT productId FROM routine_products)
+    ''');
+    return result.map(Product.fromMap).toList();
+  }
 }

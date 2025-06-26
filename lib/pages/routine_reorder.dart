@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:skincare/models/routine.dart';
+import 'package:skincare/pages/routine_page.dart';
 import 'package:skincare/services/product_database.dart';
 
 class RoutineReorderPage extends StatefulWidget {
@@ -39,29 +40,42 @@ class _RoutineReorderPageState extends State<RoutineReorderPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Reorder ${routines.first.routine.name} routine')),
-      body: Column(
-        children: [
-          Expanded(
-            child: ReorderableListView(
-              onReorder: _onReorder,
-              children: [
-                for (final product in routines.map((r) => r.product).toList())
-                  ListTile(
-                    key: ValueKey(product.id),
-                    title: Text(product.name),
-                  ),
-              ],
+      appBar: AppBar(
+        title: Text('Reorder ${routines.first.routine.name} routine'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: ReorderableListView(
+                onReorder: _onReorder,
+                children: [
+                  for (int i = 0; i < routines.length; i++)
+                    Padding(
+                      key: ValueKey(routines[i].product.id),
+                      padding: EdgeInsets.fromLTRB(
+                        0,
+                        i != 0 ? 8 : 0,
+                        0,
+                        i != routines.length - 1 ? 8 : 0,
+                      ),
+                      child: ProductCard(product: routines[i].product),
+                    ),
+                ],
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton(
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+              ),
               onPressed: _saveOrder,
               child: Text('Save'),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
