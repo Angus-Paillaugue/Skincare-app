@@ -7,7 +7,7 @@ class Routine {
   final SkincareTime routine;
   final int routineOrder;
   DateTime lastUsed;
-  Product product;
+  Product? product;
 
   Routine({
     this.id,
@@ -21,9 +21,31 @@ class Routine {
   factory Routine.fromMap(Map<String, dynamic> map) => Routine(
     id: map['id'],
     productId: map['productId'],
-    routine: map['routine'],
+    routine: SkincareTime.values.firstWhere(
+      (e) => e.name == map['routine'] as String,
+      orElse: () => SkincareTime.none,
+    ),
     routineOrder: map['routineOrder'],
     lastUsed: DateTime.parse(map['lastUsed'] as String),
-    product: Product.fromMap(map['product'] as Map<String, dynamic>),
+    product: map['product'] == null
+        ? null
+        : Product.fromMap(map['product'] as Map<String, dynamic>),
   );
+
+  Routine.fromJson(Map<String, dynamic> json)
+    : productId = json['productId'],
+      routine = SkincareTime.values.firstWhere(
+        (e) => e.name == json['routine'] as String,
+        orElse: () => SkincareTime.none,
+      ),
+      routineOrder = json['routineOrder'],
+      lastUsed = DateTime.parse(json['lastUsed'] as String);
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'productId': productId,
+    'routine': routine.name,
+    'routineOrder': routineOrder,
+    'lastUsed': lastUsed.toIso8601String(),
+  };
 }

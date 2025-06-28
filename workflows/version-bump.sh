@@ -3,7 +3,6 @@
 project_dir="$(builtin cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$project_dir/workflows/shared.sh"
 
-echo "Project directory: $project_dir"
 current_local_version=$(get_local_version)
 current_latest_version=$(get_latest_version)
 
@@ -78,7 +77,6 @@ main() {
   git push origin --delete "$bump_branch"
 
   # Create a github release
-  notes=$(git log --pretty=format:"%h - %s (%an)" "$current_local_version"..HEAD)
   gh release create "$new_version" --generate-notes || {
     echo "Error: Failed to create a GitHub release."
     exit 1

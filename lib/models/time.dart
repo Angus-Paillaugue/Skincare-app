@@ -1,5 +1,1 @@
-enum SkincareTime {
-  morning,
-  night,
-  none
-}
+enum SkincareTime { morning, night, none }

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:skincare/utils/utils.dart';
 import 'package:skincare/models/product.dart';
 import 'package:skincare/models/time.dart';
@@ -9,13 +10,11 @@ import 'package:dotted_border/dotted_border.dart';
 class EditProductPage extends StatefulWidget {
   final Product product;
   final List<SkincareTime> routines;
-  final VoidCallback onFinished;
 
   const EditProductPage({
     super.key,
     required this.product,
     required this.routines,
-    required this.onFinished,
   });
 
   @override
@@ -68,9 +67,8 @@ class _EditProductPageState extends State<EditProductPage> {
         );
       }
     }
-    widget.onFinished();
     if (mounted) {
-      Navigator.pop(context);
+      GoRouter.of(context).go('/home');
     }
   }
 
@@ -82,72 +80,26 @@ class _EditProductPageState extends State<EditProductPage> {
     });
   }
 
-  Future<void> deleteProduct() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Delete Product'),
-          content: const Text('Are you sure you want to delete this product?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.red,
-              ),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
-    if (confirm == true) {
-      await ProductDatabase.instance.deleteProduct(widget.product);
-      widget.onFinished();
-      if (mounted) {
-        Navigator.pop(context);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Edit Product',
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_forever_outlined),
-            onPressed: deleteProduct,
-            tooltip: 'Delete product',
-          ),
-        ],
+    return ProductForm(
+      onFinished: _saveProduct,
+      imagePath: _imagePath,
+      product: widget.product,
+      type: ProductFormType.edit,
+      checkboxValues: CheckboxValue(
+        morning: _routines.contains(SkincareTime.morning),
+        night: _routines.contains(SkincareTime.night),
       ),
-      body: ProductForm(
-        onFinished: _saveProduct,
-        imagePath: _imagePath,
-        product: widget.product,
-        type: ProductFormType.edit,
-        checkboxValues: CheckboxValue(
-          morning: _routines.contains(SkincareTime.morning),
-          night: _routines.contains(SkincareTime.night),
-        ),
-        onCheckboxChanged: (time, value) {
-          setState(() {
-            if (value) {
-              _routines.add(time);
-            } else {
-              _routines.remove(time);
-            }
-          });
-        },
-      ),
+      onCheckboxChanged: (time, value) {
+        setState(() {
+          if (value) {
+            _routines.add(time);
+          } else {
+            _routines.remove(time);
+          }
+        });
+      },
     );
   }
 }

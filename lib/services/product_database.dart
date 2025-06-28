@@ -1,5 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import 'package:skincare/models/routine.dart';
 import 'package:skincare/models/time.dart';
+import 'package:skincare/utils/utils.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:skincare/models/product.dart';
@@ -51,7 +55,10 @@ class ProductDatabase {
     }
   }
 
-  Future<void> addProductToRoutine(Product product, SkincareTime routine) async {
+  Future<void> addProductToRoutine(
+    Product product,
+    SkincareTime routine,
+  ) async {
     log("DATABASE ACCESS addProductToRoutine");
     final db = await instance.database;
     // Get the current max order for this routine
@@ -68,7 +75,10 @@ class ProductDatabase {
     });
   }
 
-  Future<void> removeProductFromRoutine(Product product, SkincareTime routine) async {
+  Future<void> removeProductFromRoutine(
+    Product product,
+    SkincareTime routine,
+  ) async {
     log("DATABASE ACCESS removeProductFromRoutine");
     final db = await instance.database;
     await db.delete(
@@ -122,12 +132,15 @@ class ProductDatabase {
   Future<List<Product>> getProductsForRoutine(SkincareTime routine) async {
     log("DATABASE ACCESS getProductsForRoutine");
     final db = await instance.database;
-    final result = await db.rawQuery('''
+    final result = await db.rawQuery(
+      '''
       SELECT p.* FROM products p
       INNER JOIN routine_products rp ON p.id = rp.productId
       WHERE rp.routine = ?
       ORDER BY rp.routineOrder ASC
-    ''', [routine.name]);
+    ''',
+      [routine.name],
+    );
     return result.map(Product.fromMap).toList();
   }
 
@@ -147,7 +160,9 @@ class ProductDatabase {
       final product = await getProductFromId(mutableMap['productId'] as int);
       final routine = Routine(
         productId: map['productId'] as int,
-        routine: SkincareTime.values.firstWhere((e) => e.name == map['routine']),
+        routine: SkincareTime.values.firstWhere(
+          (e) => e.name == map['routine'],
+        ),
         routineOrder: map['routineOrder'] as int,
         lastUsed: DateTime.parse(map['lastUsed'] as String),
         product: product,
@@ -161,11 +176,7 @@ class ProductDatabase {
   Future<Product> getProductFromId(int id) async {
     log("DATABASE ACCESS getProductFromId");
     final db = await instance.database;
-    final result = await db.query(
-      'products',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    final result = await db.query('products', where: 'id = ?', whereArgs: [id]);
     if (result.isEmpty) throw Exception('Product not found');
     return Product.fromMap(result.first);
   }
@@ -182,7 +193,9 @@ class ProductDatabase {
     return result.map((map) {
       return Routine(
         productId: map['productId'] as int,
-        routine: SkincareTime.values.firstWhere((e) => e.name == map['routine']),
+        routine: SkincareTime.values.firstWhere(
+          (e) => e.name == map['routine'],
+        ),
         routineOrder: map['routineOrder'] as int,
         lastUsed: DateTime.parse(map['lastUsed'] as String),
         product: product,
@@ -190,7 +203,10 @@ class ProductDatabase {
     }).toList();
   }
 
-  Future<void> updateRoutineOrder(SkincareTime routine, List<Product> products) async {
+  Future<void> updateRoutineOrder(
+    SkincareTime routine,
+    List<Product> products,
+  ) async {
     log("DATABASE ACCESS updateRoutineOrder");
     final db = await instance.database;
     for (int i = 0; i < products.length; i++) {
@@ -225,11 +241,7 @@ class ProductDatabase {
       whereArgs: [product.id],
     );
     // Then delete from products
-    await db.delete(
-      'products',
-      where: 'id = ?',
-      whereArgs: [product.id],
-    );
+    await db.delete('products', where: 'id = ?', whereArgs: [product.id]);
   }
 
   Future<List<Product>> getUnusedProducts() async {
@@ -240,5 +252,65 @@ class ProductDatabase {
       WHERE id NOT IN (SELECT productId FROM routine_products)
     ''');
     return result.map(Product.fromMap).toList();
+  }
+
+  Future<String> exportDatabase() async {
+    log("DATABASE ACCESS exportDatabase");
+    final db = await instance.database;
+    // Dump the contents
+    final List<Map<String, dynamic>> products = await db.query('products');
+    final List<Map<String, dynamic>> routines = await db.query(
+      'routine_products',
+    );
+    // Convert to JSON
+    final String json = jsonEncode({
+      'products': products.map((p) => Product.fromMap(p).toJson()).toList(),
+      'routines': routines.map((r) => Routine.fromMap(r).toJson()).toList(),
+    });
+
+    var downloadsDir = (await getDownloadsDirectory())?.path;
+    if (downloadsDir == null) {
+      downloadsDir = (await getApplicationDocumentsDirectory()).path;
+      log(
+        "Downloads directory not found, using application documents directory: $downloadsDir",
+      );
+    }
+    final file = await Utils.writeDownloadFile('skincare_export.json', json);
+    final filePath = file.path;
+    log("Database exported to $filePath");
+    return filePath;
+  }
+
+  Future<void> importDatabase(String jsonPath) async {
+    log("DATABASE ACCESS importDatabase");
+    final db = await instance.database;
+    // Read the JSON file
+    final file = File(jsonPath);
+    if (!file.existsSync()) {
+      throw Exception('JSON file not found at $jsonPath');
+    }
+    final jsonString = file.readAsStringSync();
+    // Decode the JSON
+    final Map<String, dynamic> jsonData = jsonDecode(jsonString);
+    // Insert products
+    final products = jsonData['products'] as List<dynamic>;
+    for (final product in products) {
+      final productMap = product as Map<String, dynamic>;
+      final newProduct = Product.fromMap(productMap);
+      // Insert product into the database
+      await db.insert('products', newProduct.toMap());
+      // Insert routines for this product
+      final routines = jsonData['routines'] as List<dynamic>;
+      for (final routine in routines) {
+        final routineMap = routine as Map<String, dynamic>;
+        if (routineMap['productId'] == newProduct.id) {
+          final routineTime = SkincareTime.values.firstWhere(
+            (e) => e.name == routineMap['routine'],
+          );
+          routineMap['routine'] = routineTime.name;
+          await db.insert('routine_products', routineMap);
+        }
+      }
+    }
   }
 }

@@ -1,17 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:skincare/pages/edit_product.dart';
+import 'package:go_router/go_router.dart';
+import 'package:skincare/page.dart';
 import 'package:skincare/models/product.dart';
 import 'package:skincare/models/time.dart';
+import 'package:skincare/pages/edit_product.dart';
 import 'package:skincare/services/product_database.dart';
 
-class AddProductPage extends StatefulWidget {
+class AddProductPage extends AppPage {
   const AddProductPage({super.key});
+  @override
+  String get title => 'Add Product';
 
   @override
-  State<AddProductPage> createState() => _AddProductPageState();
+  Widget build(BuildContext context) {
+    return AddProductPageInner();
+  }
 }
 
-class _AddProductPageState extends State<AddProductPage> {
+class AddProductPageInner extends StatefulWidget {
+  const AddProductPageInner({super.key});
+  @override
+  State<AddProductPageInner> createState() => _AddProductPageInnerState();
+}
+
+class _AddProductPageInnerState extends State<AddProductPageInner> {
   bool _useInMorning = false;
   bool _useAtNight = false;
 
@@ -26,27 +38,27 @@ class _AddProductPageState extends State<AddProductPage> {
     );
     product.id = productId;
     if (mounted) {
-      Navigator.pop(context, product);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${product.name} added successfully!')),
+      );
+      GoRouter.of(context).go('/home');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Add Product')),
-      body: ProductForm(
-        onFinished: _saveProduct,
-        type: ProductFormType.create,
-        onCheckboxChanged: (time, value) {
-          setState(() {
-            if (time == SkincareTime.morning) {
-              _useInMorning = value;
-            } else if (time == SkincareTime.night) {
-              _useAtNight = value;
-            }
-          });
-        },
-      ),
+    return ProductForm(
+      onFinished: _saveProduct,
+      type: ProductFormType.create,
+      onCheckboxChanged: (time, value) {
+        setState(() {
+          if (time == SkincareTime.morning) {
+            _useInMorning = value;
+          } else if (time == SkincareTime.night) {
+            _useAtNight = value;
+          }
+        });
+      },
     );
   }
 }

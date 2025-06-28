@@ -1,17 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:skincare/models/routine.dart';
-import 'package:skincare/pages/routine_page.dart';
 import 'package:skincare/services/product_database.dart';
+import 'routine_page.dart';
 
-class RoutineReorderPage extends StatefulWidget {
+class RoutineReorderPage extends StatelessWidget {
   final List<Routine> routines;
   const RoutineReorderPage({required this.routines, super.key});
 
   @override
-  State<RoutineReorderPage> createState() => _RoutineReorderPageState();
+  Widget build(BuildContext context) {
+    return RoutineReorderPageInner(routines: routines);
+  }
 }
 
-class _RoutineReorderPageState extends State<RoutineReorderPage> {
+class RoutineReorderPageInner extends StatefulWidget {
+  final List<Routine> routines;
+  const RoutineReorderPageInner({required this.routines, super.key});
+
+  @override
+  State<RoutineReorderPageInner> createState() =>
+      _RoutineReorderPageInnerState();
+}
+
+class _RoutineReorderPageInnerState extends State<RoutineReorderPageInner> {
   late List<Routine> routines;
 
   @override
@@ -28,54 +40,55 @@ class _RoutineReorderPageState extends State<RoutineReorderPage> {
     });
   }
 
-  Future<void> _saveOrder() async {
+  Future<void> _saveOrder(BuildContext context) async {
     final db = ProductDatabase.instance;
-    final products = routines.map((r) => r.product).toList();
+    final products = routines
+        .where((r) => r.product != null)
+        .map((r) => r.product!)
+        .toList();
     await db.updateRoutineOrder(routines.first.routine, products);
     if (mounted) {
-      Navigator.pop(context, routines);
+      GoRouter.of(context).pop(routines);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Reorder ${routines.first.routine.name} routine'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: ReorderableListView(
-                onReorder: _onReorder,
-                children: [
-                  for (int i = 0; i < routines.length; i++)
-                    Padding(
-                      key: ValueKey(routines[i].product.id),
-                      padding: EdgeInsets.fromLTRB(
-                        0,
-                        i != 0 ? 8 : 0,
-                        0,
-                        i != routines.length - 1 ? 8 : 0,
-                      ),
-                      child: ProductCard(product: routines[i].product),
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: ReorderableListView(
+              onReorder: _onReorder,
+              children: [
+                for (int i = 0; i < routines.length; i++)
+                  Padding(
+                    key: ValueKey(routines[i].product!.id),
+                    padding: EdgeInsets.fromLTRB(
+                      0,
+                      i != 0 ? 8 : 0,
+                      0,
+                      i != routines.length - 1 ? 8 : 0,
                     ),
-                ],
-              ),
+                    child: ProductCard(
+                      product: routines[i].product!,
+                      showInstructions: true,
+                    ),
+                  ),
+              ],
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: _saveOrder,
-              child: Text('Save'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
             ),
-          ],
-        ),
+            onPressed: () => _saveOrder(context),
+            child: const Text('Save'),
+          ),
+        ],
       ),
     );
   }

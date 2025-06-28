@@ -1,19 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_layout_grid/flutter_layout_grid.dart';
+import 'package:go_router/go_router.dart';
 import 'package:skincare/models/product.dart';
 import 'package:skincare/models/time.dart';
-import 'package:skincare/pages/edit_product.dart';
-import 'package:skincare/pages/home_page.dart';
 import 'package:skincare/services/product_database.dart';
+import 'home_page.dart';
 
-class UnusedProductsPage extends StatefulWidget {
+class UnusedProductsPage extends StatelessWidget {
   const UnusedProductsPage({super.key});
 
   @override
-  State<UnusedProductsPage> createState() => _UnusedProductsPageState();
+  Widget build(BuildContext context) {
+    return const UnusedProductsPageInner();
+  }
 }
 
-class _UnusedProductsPageState extends State<UnusedProductsPage> {
+class UnusedProductsPageInner extends StatefulWidget {
+  const UnusedProductsPageInner({super.key});
+
+  @override
+  State<UnusedProductsPageInner> createState() =>
+      _UnusedProductsPageInnerState();
+}
+
+class _UnusedProductsPageInnerState extends State<UnusedProductsPageInner> {
   List<Product> products = [];
 
   @override
@@ -31,51 +41,45 @@ class _UnusedProductsPageState extends State<UnusedProductsPage> {
   }
 
   void _editProduct(Product product) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => EditProductPage(
-          product: product,
-          routines: [],
-          onFinished: () => _loadProducts(),
-        ),
-      ),
+    final result = await context.push(
+      '/home/edit-product',
+      extra: {'product': product, 'routines': const <SkincareTime>[]},
     );
+    if (result == true && mounted) {
+      _loadProducts();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Unused products')),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: products.isEmpty
-                  ? const Text(
-                      'No unused products found.',
-                      style: TextStyle(fontSize: 16),
-                    )
-                  : LayoutGrid(
-                      columnSizes: [1.fr, 1.fr],
-                      rowSizes: const [auto, auto],
-                      rowGap: 8,
-                      columnGap: 8,
-                      children: [
-                        for (final product in products)
-                          GestureDetector(
-                            onTap: () => _editProduct(product),
-                            child: ProductCard(
-                              product: product,
-                              time: SkincareTime.none,
-                            ),
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: products.isEmpty
+                ? const Text(
+                    'No unused products found.',
+                    style: TextStyle(fontSize: 16),
+                  )
+                : LayoutGrid(
+                    columnSizes: [1.fr, 1.fr],
+                    rowSizes: const [auto, auto],
+                    rowGap: 8,
+                    columnGap: 8,
+                    children: [
+                      for (final product in products)
+                        GestureDetector(
+                          onTap: () => _editProduct(product),
+                          child: ProductCard(
+                            product: product,
+                            time: SkincareTime.none,
                           ),
-                      ],
-                    ),
-            ),
-          ],
-        ),
+                        ),
+                    ],
+                  ),
+          ),
+        ],
       ),
     );
   }
